@@ -1,0 +1,11 @@
+Prompt,Goal,Relevant_skill,Difficulty
+"You're a mermaid! You live under the sea. That's great. But you're also hungry. Oh man, so hungry! Your mer-mom offers you some delicious kelp salad. What should you do?",Eat the salad.,Table_manners,5
+"Now you are full of kelp and ready to start your day. It's time to go to mermaid school! You hear your school bus, which is actually a submarine, outside. It's time to get on, or you could swim or something if you want! What do you do?",Go to school.,Undersea_navigation,5
+On the way to school you are waylaid by sharks! Very scary. They just want to talk with you though.  Apparently there is a ship that is in trouble! And sailors are falling overboard. Can you help them?,Help the sailors somehow.,Daring,15
+You help the sailors and one is super handsome. Why don't you sing him a song! What song should you sing?,Name any song.,Song_knowldege,5
+"Well, that was fun. Back to the sea now. But you can't stop thinking about the handsome sailor! Maybe you should go talk to Ursula the sea witch. ",Go talk to Ursula the sea witch.,Undersea_navigation,5
+"Ursula says you should definitely pursue a romance with this sailor, about whom you know very little. She said you could trade something in exchange for legs! What should you trade?",Trade your voice for legs.,Legalese,10
+"Now you have legs. And despite some setbacks, your romance with the sailor (turns out he's a prince) is going great! Should you go on a boat ride with him?",Go on a boat ride!,Undersea_navigation,5
+"The boat ride is fun, but when you get back another woman is at the palace, and she's trying to get the prince to marry her! How do you stop them?",Interrupt the wedding somehow.,Daring,15
+"Your dad heard about the whole wedding business, and he's real mad at Ursula for all her shenanigans. He smites her into the ocean depths! What do you say to the prince now?",Say something to the prince.,Charm,10
+"That was a crazy adventure, but also you missed a whole day of school and now you have to go to school tomorrow. Or do you? What do you think?",Any answer is valid.,Charm,5
