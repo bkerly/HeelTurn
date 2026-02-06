@@ -8,9 +8,10 @@ from pathlib import Path
 import threading
 from PyQt5.QtWidgets import (QApplication, QMainWindow, QVBoxLayout, QHBoxLayout, 
                            QWidget, QPushButton, QLabel, QComboBox, QTextEdit, 
-                           QLineEdit, QMessageBox, QProgressBar, QSplitter)
+                           QLineEdit, QMessageBox, QProgressBar, QSplitter, 
+                           QTextBrowser)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
-from PyQt5.QtGui import QFont, QPixmap
+from PyQt5.QtGui import QFont, QPixmap, QTextCharFormat, QTextCursor, QColor
 
 class WorkerThread(QThread):
     finished = pyqtSignal(object)
@@ -50,6 +51,15 @@ class HeelTurnAdventure(QMainWindow):
         self.current_row = 1
         self.story_history = []
         
+        # UI elements that need to be tracked for cleanup
+        self.action_entry = None
+        self.story_text = None
+        self.game_buttons_layout = None
+        
+        # Styling
+        self.fixed_font = QFont("Courier New", 12)  # Fixed-width font
+        self.monospace_font = QFont("Monaco", 11)  # Alternative monospace
+        
         self.setup_ui()
         self.scan_available_stories()
         
@@ -63,10 +73,35 @@ class HeelTurnAdventure(QMainWindow):
         self.sidebar = QWidget()
         self.sidebar.setMaximumWidth(300)
         self.sidebar_layout = QVBoxLayout(self.sidebar)
+        self.sidebar.setStyleSheet("""
+            QWidget {
+                background-color: #f8f9fa;
+                border-right: 1px solid #dee2e6;
+            }
+            QPushButton {
+                background-color: #007bff;
+                color: white;
+                border: none;
+                padding: 8px;
+                border-radius: 4px;
+                font-weight: bold;
+            }
+            QPushButton:hover {
+                background-color: #0056b3;
+            }
+            QPushButton:disabled {
+                background-color: #6c757d;
+            }
+        """)
         
         # Main content area
         self.content_area = QWidget()
         self.content_layout = QVBoxLayout(self.content_area)
+        self.content_area.setStyleSheet("""
+            QWidget {
+                background-color: #ffffff;
+            }
+        """)
         
         splitter = QSplitter(Qt.Horizontal)
         splitter.addWidget(self.sidebar)
@@ -83,11 +118,14 @@ class HeelTurnAdventure(QMainWindow):
         self.clear_content()
         
         title = QLabel("Heel Turn")
-        title.setFont(QFont("Arial", 20, QFont.Bold))
+        title.setFont(QFont("Arial", 24, QFont.Bold))
+        title.setAlignment(Qt.AlignCenter)
+        title.setStyleSheet("color: #007bff; margin: 20px;")
         self.content_layout.addWidget(title)
         
         loading_label = QLabel("Scanning for stories...")
-        loading_label.setFont(QFont("Arial", 12))
+        loading_label.setFont(QFont("Arial", 14))
+        loading_label.setAlignment(Qt.AlignCenter)
         self.content_layout.addWidget(loading_label)
         
     def scan_available_stories(self):
@@ -172,149 +210,233 @@ class HeelTurnAdventure(QMainWindow):
         self.show_story_selection()
         
     def show_story_selection(self):
+        """Show the story selection screen"""
         self.clear_content()
+        self.clear_sidebar()
+        
+        # Reset game state
+        self.game_started = False
+        self.story_selected = False
+        self.story_data = None
+        self.character_data = None
+        self.selected_character = None
+        self.current_row = 1
+        self.story_history = []
+        
+        # Clear any game-specific UI elements
+        self.action_entry = None
+        self.story_text = None
+        self.game_buttons_layout = None
         
         title = QLabel("Choose Your Story")
-        title.setFont(QFont("Arial", 16, QFont.Bold))
+        title.setFont(QFont("Arial", 18, QFont.Bold))
+        title.setStyleSheet("margin: 10px 0; color: #333;")
         self.content_layout.addWidget(title)
         
         # Debug info
         debug_text = QLabel(f"Found {len(self.available_stories)} stories")
-        debug_text.setStyleSheet("color: green; font-size: 10px;")
+        debug_text.setStyleSheet("color: #28a745; font-size: 12px; margin-bottom: 10px;")
         self.content_layout.addWidget(debug_text)
         
         if self.available_stories:
             self.story_combo = QComboBox()
             self.story_combo.addItems(self.available_stories)
+            self.story_combo.setStyleSheet("""
+                QComboBox {
+                    padding: 8px;
+                    font-size: 14px;
+                    border: 1px solid #ced4da;
+                    border-radius: 4px;
+                }
+            """)
             self.content_layout.addWidget(self.story_combo)
             
             select_btn = QPushButton("Select Story")
             select_btn.clicked.connect(self.select_story)
+            select_btn.setStyleSheet("margin-top: 10px;")
             self.content_layout.addWidget(select_btn)
         else:
             # Show detailed error info
             error_label = QLabel("No stories found. Please check:")
-            error_label.setStyleSheet("color: red; font-size: 12px;")
+            error_label.setStyleSheet("color: #dc3545; font-size: 14px; margin: 10px 0;")
             self.content_layout.addWidget(error_label)
             
             self.story_combo = QComboBox()
             self.story_combo.addItem("No stories available")
             self.story_combo.setEnabled(False)
+            self.story_combo.setStyleSheet("""
+                QComboBox {
+                    padding: 8px;
+                    font-size: 14px;
+                    border: 1px solid #ced4da;
+                    border-radius: 4px;
+                }
+            """)
             self.content_layout.addWidget(self.story_combo)
             
             select_btn = QPushButton("Select Story")
             select_btn.setEnabled(False)
+            select_btn.setStyleSheet("margin-top: 10px;")
             self.content_layout.addWidget(select_btn)
             
     def show_character_selection(self):
+        """Show character selection screen"""
         self.clear_content()
         self.clear_sidebar()
         
         title = QLabel("Choose Your Character")
-        title.setFont(QFont("Arial", 16, QFont.Bold))
+        title.setFont(QFont("Arial", 18, QFont.Bold))
+        title.setStyleSheet("margin: 10px 0; color: #333;")
         self.content_layout.addWidget(title)
         
         self.character_combo = QComboBox()
         character_names = [row['Character'] for _, row in self.character_data.iterrows()]
         self.character_combo.addItems(character_names)
         self.character_combo.currentTextChanged.connect(self.update_character_preview)
+        self.character_combo.setStyleSheet("""
+            QComboBox {
+                padding: 8px;
+                font-size: 14px;
+                border: 1px solid #ced4da;
+                border-radius: 4px;
+            }
+        """)
         self.content_layout.addWidget(self.character_combo)
         
         # Character preview with image support
         self.preview_widget = QWidget()
         preview_layout = QVBoxLayout(self.preview_widget)
+        preview_layout.setSpacing(10)
         
         self.character_image_label = QLabel()
         self.character_image_label.setAlignment(Qt.AlignCenter)
         self.character_image_label.setFixedSize(150, 150)
-        self.character_image_label.setStyleSheet("border: 1px solid gray; background-color: #f0f0f0;")
+        self.character_image_label.setStyleSheet("border: 2px solid #007bff; background-color: #f8f9fa; border-radius: 8px;")
         preview_layout.addWidget(self.character_image_label)
         
         self.preview_text_label = QLabel()
         self.preview_text_label.setWordWrap(True)
+        self.preview_text_label.setStyleSheet("font-size: 12px; padding: 10px; background-color: #e9ecef; border-radius: 4px;")
         preview_layout.addWidget(self.preview_text_label)
         
         self.content_layout.addWidget(self.preview_widget)
         
         start_btn = QPushButton("Start Adventure!")
         start_btn.clicked.connect(self.start_game)
+        start_btn.setStyleSheet("margin-top: 15px; padding: 10px; font-size: 14px;")
         self.content_layout.addWidget(start_btn)
         
         back_btn = QPushButton("← Back to Story Selection")
         back_btn.clicked.connect(self.back_to_story)
+        back_btn.setStyleSheet("margin-top: 5px; padding: 8px; font-size: 12px; background-color: #6c757d;")
         self.content_layout.addWidget(back_btn)
         
         self.update_character_preview()
         
     def show_game_screen(self):
+        """Show the main game screen with improved styling"""
         self.clear_content()
         self.clear_sidebar()
         
         # Character info in sidebar
         char_title = QLabel("Character Info")
-        char_title.setFont(QFont("Arial", 12, QFont.Bold))
+        char_title.setFont(QFont("Arial", 14, QFont.Bold))
+        char_title.setStyleSheet("margin-bottom: 10px; color: #007bff;")
         self.sidebar_layout.addWidget(char_title)
         
         # Character image in sidebar
         self.sidebar_image_label = QLabel()
         self.sidebar_image_label.setAlignment(Qt.AlignCenter)
         self.sidebar_image_label.setFixedSize(120, 120)
-        self.sidebar_image_label.setStyleSheet("border: 1px solid gray; background-color: #f0f0f0;")
+        self.sidebar_image_label.setStyleSheet("border: 2px solid #007bff; background-color: #f8f9fa; border-radius: 8px;")
         self.sidebar_layout.addWidget(self.sidebar_image_label)
         
         if self.selected_character:
             char_name = QLabel(f"Name: {self.selected_character['Character']}")
-            char_name.setFont(QFont("Arial", 10, QFont.Bold))
+            char_name.setFont(QFont("Arial", 11, QFont.Bold))
+            char_name.setStyleSheet("margin-top: 10px; color: #333;")
             self.sidebar_layout.addWidget(char_name)
             
             char_desc = QLabel(f"Description: {self.selected_character['Description']}")
             char_desc.setWordWrap(True)
+            char_desc.setStyleSheet("font-size: 10px; margin: 5px 0; color: #666;")
             self.sidebar_layout.addWidget(char_desc)
             
         story_label = QLabel(f"Story: {self.selected_story}")
+        story_label.setStyleSheet("margin-top: 15px; font-weight: bold; color: #007bff;")
         self.sidebar_layout.addWidget(story_label)
         
         self.progress_label = QLabel(f"Progress: {self.current_row}/{len(self.story_data)}")
+        self.progress_label.setStyleSheet("margin: 5px 0; font-weight: bold; color: #28a745;")
         self.sidebar_layout.addWidget(self.progress_label)
         
         self.sidebar_layout.addStretch()
         
         new_game_btn = QPushButton("New Game")
-        new_game_btn.clicked.connect(self.reset_game)
+        new_game_btn.clicked.connect(self.quit_game)
+        new_game_btn.setStyleSheet("padding: 8px; font-size: 12px; background-color: #ffc107; color: #333;")
         self.sidebar_layout.addWidget(new_game_btn)
         
         # Load character image for sidebar
         self.load_character_image_for_sidebar()
         
-        # Main game content
-        self.story_text = QTextEdit()
-        self.story_text.setReadOnly(True)
+        # Main game content - create new widgets each time
+        self.story_text = QTextBrowser()
+        self.story_text.setFont(self.fixed_font)
+        self.story_text.setStyleSheet("""
+            QTextBrowser {
+                background-color: #000000;
+                color: #00ff00;
+                border: 1px solid #00ff00;
+                padding: 10px;
+                border-radius: 4px;
+            }
+        """)
         self.content_layout.addWidget(self.story_text)
         
-        # Input area
+        # Input area - create new widget each time
         input_label = QLabel("What do you do?")
+        input_label.setFont(QFont("Arial", 12, QFont.Bold))
+        input_label.setStyleSheet("margin-top: 15px; color: #333;")
         self.content_layout.addWidget(input_label)
         
         self.action_entry = QLineEdit()
+        self.action_entry.setFont(self.fixed_font)
         self.action_entry.returnPressed.connect(self.submit_action)
+        self.action_entry.setStyleSheet("""
+            QLineEdit {
+                padding: 10px;
+                font-size: 14px;
+                border: 2px solid #007bff;
+                border-radius: 4px;
+                background-color: #f8f9fa;
+            }
+            QLineEdit:focus {
+                border-color: #0056b3;
+                background-color: #ffffff;
+            }
+        """)
         self.content_layout.addWidget(self.action_entry)
         
-        # Buttons
-        btn_layout = QHBoxLayout()
+        # Buttons - create new layout each time
+        self.game_buttons_layout = QHBoxLayout()
         
         submit_btn = QPushButton("Submit Action")
         submit_btn.clicked.connect(self.submit_action)
-        btn_layout.addWidget(submit_btn)
+        submit_btn.setStyleSheet("padding: 8px 12px; background-color: #28a745; color: white;")
+        self.game_buttons_layout.addWidget(submit_btn)
         
         skip_btn = QPushButton("Skip Challenge")
         skip_btn.clicked.connect(self.skip_challenge)
-        btn_layout.addWidget(skip_btn)
+        skip_btn.setStyleSheet("padding: 8px 12px; background-color: #17a2b8; color: white;")
+        self.game_buttons_layout.addWidget(skip_btn)
         
         quit_btn = QPushButton("Quit Game")
         quit_btn.clicked.connect(self.quit_game)
-        btn_layout.addWidget(quit_btn)
+        quit_btn.setStyleSheet("padding: 8px 12px; background-color: #dc3545; color: white;")
+        self.game_buttons_layout.addWidget(quit_btn)
         
-        self.content_layout.addLayout(btn_layout)
+        self.content_layout.addLayout(self.game_buttons_layout)
         
         self.update_story_display()
         
@@ -364,7 +486,7 @@ class HeelTurnAdventure(QMainWindow):
         
         # If no image found, show placeholder
         target_label.setText("No Image")
-        target_label.setStyleSheet("color: gray; font-style: italic;")
+        target_label.setStyleSheet("color: #6c757d; font-style: italic; border: 1px dashed #6c757d;")
         
     def load_character_image_for_sidebar(self):
         """Load character image for the sidebar"""
@@ -392,16 +514,36 @@ class HeelTurnAdventure(QMainWindow):
                     self.load_character_image(char_name, self.character_image_label)
         
     def clear_content(self):
+        """Clear all content widgets"""
         for i in reversed(range(self.content_layout.count())):
-            widget = self.content_layout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
+            item = self.content_layout.itemAt(i)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                # Clear layout recursively
+                self.clear_layout(item.layout())
+                item.layout().deleteLater()
                 
+    def clear_layout(self, layout):
+        """Recursively clear a layout and its widgets"""
+        if layout is not None:
+            while layout.count():
+                item = layout.takeAt(0)
+                widget = item.widget()
+                if widget is not None:
+                    widget.deleteLater()
+                else:
+                    self.clear_layout(item.layout())
+                    
     def clear_sidebar(self):
+        """Clear sidebar widgets"""
         for i in reversed(range(self.sidebar_layout.count())):
-            widget = self.sidebar_layout.itemAt(i).widget()
-            if widget:
-                widget.deleteLater()
+            item = self.sidebar_layout.itemAt(i)
+            if item.widget():
+                item.widget().deleteLater()
+            elif item.layout():
+                self.clear_layout(item.layout())
+                item.layout().deleteLater()
                 
     def find_story_files(self, story_name):
         """Find story files with flexible naming"""
@@ -509,35 +651,111 @@ class HeelTurnAdventure(QMainWindow):
         self.show_game_screen()
         
     def back_to_story(self):
+        """Go back to story selection"""
         self.story_selected = False
         self.story_data = None
         self.character_data = None
         self.selected_character = None
+        self.current_row = 1
+        self.story_history = []
+        
+        # Clear game-specific UI elements
+        self.action_entry = None
+        self.story_text = None
+        self.game_buttons_layout = None
+        
         self.show_story_selection()
         
-    def update_story_display(self):
-        text = ""
+    def quit_game(self):
+        """Quit the current game and return to story selection"""
+        self.back_to_story()
         
-        # Show history
-        for i, history in enumerate(self.story_history):
-            text += f"<b>Challenge {i+1}:</b> {history['prompt']}<br/>"
-            text += f"<i>Your Action:</i> {history['action']}<br/>"
-            text += f"Outcome: {history['response']}<br/><br/>"
+    def reset_game(self):
+        """Reset the game (same as quit)"""
+        self.quit_game()
+        
+    def update_story_display(self):
+        if not self.story_text:
+            return
             
+        # Clear the text browser
+        self.story_text.clear()
+        
+        # Create text cursor for formatting
+        cursor = self.story_text.textCursor()
+        
+        # Computer text format (green)
+        computer_format = QTextCharFormat()
+        computer_format.setForeground(QColor("#00ff00"))
+        computer_format.setFont(self.fixed_font)
+        
+        # Player text format (yellow)
+        player_format = QTextCharFormat()
+        player_format.setForeground(QColor("#ffff00"))
+        player_format.setFont(self.fixed_font)
+        player_format.setFontWeight(QFont.Bold)
+        
+        # Header format (cyan)
+        header_format = QTextCharFormat()
+        header_format.setForeground(QColor("#00ffff"))
+        header_format.setFont(self.fixed_font)
+        header_format.setFontWeight(QFont.Bold)
+        
+        # Success format (bright green)
+        success_format = QTextCharFormat()
+        success_format.setForeground(QColor("#00ff88"))
+        success_format.setFont(self.fixed_font)
+        
+        # Failure format (red)
+        failure_format = QTextCharFormat()
+        failure_format.setForeground(QColor("#ff5555"))
+        failure_format.setFont(self.fixed_font)
+        
+        # Show history with visual distinction
+        for i, history in enumerate(self.story_history):
+            # Challenge header
+            cursor.insertText(f"[CHALLENGE {i+1}] ", header_format)
+            cursor.insertText(history['prompt'] + "\n", computer_format)
+            
+            # Player action
+            cursor.insertText(">>> YOU: ", player_format)
+            cursor.insertText(history['action'] + "\n", player_format)
+            
+            # Outcome
+            outcome_text = history['response']
+            if "Success!" in outcome_text or "✓" in outcome_text:
+                cursor.insertText("<<< RESULT: ", success_format)
+                cursor.insertText(outcome_text + "\n\n", success_format)
+            elif "Failed." in outcome_text or "✗" in outcome_text:
+                cursor.insertText("<<< RESULT: ", failure_format)
+                cursor.insertText(outcome_text + "\n\n", failure_format)
+            else:
+                cursor.insertText("<<< RESULT: " + outcome_text + "\n\n", computer_format)
+        
         # Show current challenge
         if self.current_row <= len(self.story_data):
-            text += "<b>Current Challenge:</b><br/>"
+            cursor.insertText("[CURRENT CHALLENGE] ", header_format)
             current_prompt = self.story_data.iloc[self.current_row - 1]['Prompt']
-            text += f"{current_prompt}<br/><br/>"
+            cursor.insertText(current_prompt + "\n\n", computer_format)
         else:
-            text += "<h3>🎉 Adventure Complete!</h3>"
-            text += "Well, that's all the story there is for now! Thanks for playing!"
+            cursor.insertText("========================================\n", header_format)
+            cursor.insertText("🎉 ADVENTURE COMPLETE! 🎉\n", success_format)
+            cursor.insertText("========================================\n\n", header_format)
+            cursor.insertText("Well, that's all the story there is for now! Thanks for playing!\n", computer_format)
             
-        self.story_text.setHtml(text)
+        self.story_text.setTextCursor(cursor)
+        
+        # Scroll to bottom
+        self.story_text.moveCursor(QTextCursor.End)
+        
         if hasattr(self, 'progress_label'):
             self.progress_label.setText(f"Progress: {self.current_row}/{len(self.story_data)}")
         
     def submit_action(self):
+        # Safety check - only process if game is active
+        if not self.game_started or not self.story_data or not self.action_entry:
+            return
+            
         action = self.action_entry.text().strip()
         if not action:
             QMessageBox.warning(self, "Warning", "Please enter an action")
@@ -555,6 +773,10 @@ class HeelTurnAdventure(QMainWindow):
         self.worker.start()
         
     def process_action(self, action):
+        # Safety check
+        if not self.story_data or not self.selected_character:
+            return {'error': 'Game state invalid'}
+            
         current_story = self.story_data.iloc[self.current_row - 1]
         
         # Build context
@@ -589,6 +811,10 @@ class HeelTurnAdventure(QMainWindow):
         }
         
     def on_action_processed(self, result):
+        # Safety check
+        if not self.story_data or not self.action_entry:
+            return
+            
         if 'error' in result:
             QMessageBox.critical(self, "Error", f"Processing error: {result['error']}")
             self.action_entry.setEnabled(True)
@@ -616,6 +842,10 @@ class HeelTurnAdventure(QMainWindow):
         QMessageBox.information(self, title, result['result_msg'])
         
     def skip_challenge(self):
+        # Safety check
+        if not self.game_started or not self.story_data:
+            return
+            
         if self.current_row > len(self.story_data):
             return
             
@@ -628,18 +858,9 @@ class HeelTurnAdventure(QMainWindow):
         })
         
         self.current_row += 1
-        self.action_entry.clear()
+        if self.action_entry:
+            self.action_entry.clear()
         self.update_story_display()
-        
-    def quit_game(self):
-        self.game_started = False
-        self.story_selected = False
-        self.current_row = 1
-        self.story_history = []
-        self.show_story_selection()
-        
-    def reset_game(self):
-        self.quit_game()
         
     # Ollama API functions
     def call_ollama(self, prompt, format_schema=None):
