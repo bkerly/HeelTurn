@@ -328,13 +328,13 @@ class HeelTurnAdventure(QMainWindow):
         
         back_btn = QPushButton("← Back to Story Selection")
         back_btn.clicked.connect(self.back_to_story)
-        back_btn.setStyleSheet("margin-top: 5px; padding: 8px; font-size: 12px; background-color: #6c757d;")
+        back_btn.setStyleSheet("margin-top: 5px; padding: 8px; font-size: 12px; background-color: #6c757d; color: white;")
         self.content_layout.addWidget(back_btn)
         
         self.update_character_preview()
         
     def show_game_screen(self):
-        """Show the main game screen with improved styling"""
+        """Show the main game screen with improved readability"""
         self.clear_content()
         self.clear_sidebar()
         
@@ -385,11 +385,13 @@ class HeelTurnAdventure(QMainWindow):
         self.story_text.setFont(self.fixed_font)
         self.story_text.setStyleSheet("""
             QTextBrowser {
-                background-color: #000000;
-                color: #00ff00;
-                border: 1px solid #00ff00;
-                padding: 10px;
+                background-color: #ffffff;
+                color: #000000;
+                border: 1px solid #cccccc;
+                padding: 15px;
                 border-radius: 4px;
+                font-family: "Courier New", Monaco, monospace;
+                font-size: 12px;
             }
         """)
         self.content_layout.addWidget(self.story_text)
@@ -405,11 +407,12 @@ class HeelTurnAdventure(QMainWindow):
         self.action_entry.returnPressed.connect(self.submit_action)
         self.action_entry.setStyleSheet("""
             QLineEdit {
-                padding: 10px;
+                padding: 12px;
                 font-size: 14px;
                 border: 2px solid #007bff;
                 border-radius: 4px;
-                background-color: #f8f9fa;
+                background-color: #ffffff;
+                font-family: "Courier New", Monaco, monospace;
             }
             QLineEdit:focus {
                 border-color: #0056b3;
@@ -423,17 +426,17 @@ class HeelTurnAdventure(QMainWindow):
         
         submit_btn = QPushButton("Submit Action")
         submit_btn.clicked.connect(self.submit_action)
-        submit_btn.setStyleSheet("padding: 8px 12px; background-color: #28a745; color: white;")
+        submit_btn.setStyleSheet("padding: 10px 15px; background-color: #28a745; color: white; font-weight: bold;")
         self.game_buttons_layout.addWidget(submit_btn)
         
         skip_btn = QPushButton("Skip Challenge")
         skip_btn.clicked.connect(self.skip_challenge)
-        skip_btn.setStyleSheet("padding: 8px 12px; background-color: #17a2b8; color: white;")
+        skip_btn.setStyleSheet("padding: 10px 15px; background-color: #17a2b8; color: white; font-weight: bold;")
         self.game_buttons_layout.addWidget(skip_btn)
         
         quit_btn = QPushButton("Quit Game")
         quit_btn.clicked.connect(self.quit_game)
-        quit_btn.setStyleSheet("padding: 8px 12px; background-color: #dc3545; color: white;")
+        quit_btn.setStyleSheet("padding: 10px 15px; background-color: #dc3545; color: white; font-weight: bold;")
         self.game_buttons_layout.addWidget(quit_btn)
         
         self.content_layout.addLayout(self.game_buttons_layout)
@@ -684,32 +687,34 @@ class HeelTurnAdventure(QMainWindow):
         # Create text cursor for formatting
         cursor = self.story_text.textCursor()
         
-        # Computer text format (green)
+        # Computer text format (dark blue)
         computer_format = QTextCharFormat()
-        computer_format.setForeground(QColor("#00ff00"))
+        computer_format.setForeground(QColor("#000080"))  # Dark blue
         computer_format.setFont(self.fixed_font)
         
-        # Player text format (yellow)
+        # Player text format (dark red - bold)
         player_format = QTextCharFormat()
-        player_format.setForeground(QColor("#ffff00"))
+        player_format.setForeground(QColor("#8B0000"))  # Dark red
         player_format.setFont(self.fixed_font)
         player_format.setFontWeight(QFont.Bold)
         
-        # Header format (cyan)
+        # Header format (dark green - bold)
         header_format = QTextCharFormat()
-        header_format.setForeground(QColor("#00ffff"))
+        header_format.setForeground(QColor("#006400"))  # Dark green
         header_format.setFont(self.fixed_font)
         header_format.setFontWeight(QFont.Bold)
         
-        # Success format (bright green)
+        # Success format (dark green)
         success_format = QTextCharFormat()
-        success_format.setForeground(QColor("#00ff88"))
+        success_format.setForeground(QColor("#006400"))  # Dark green
         success_format.setFont(self.fixed_font)
+        success_format.setFontWeight(QFont.Bold)
         
-        # Failure format (red)
+        # Failure format (dark red)
         failure_format = QTextCharFormat()
-        failure_format.setForeground(QColor("#ff5555"))
+        failure_format.setForeground(QColor("#8B0000"))  # Dark red
         failure_format.setFont(self.fixed_font)
+        failure_format.setFontWeight(QFont.Bold)
         
         # Show history with visual distinction
         for i, history in enumerate(self.story_history):
